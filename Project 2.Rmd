@@ -1,0 +1,104 @@
+---
+title: "Untitled"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+require(mlbench)
+
+# if you don't have any required package, use the install.packages() command
+# load the data set
+data(BreastCancer)
+# some algorithms don't like missing values, so remove rows with missing values
+BreastCancer <- na.omit(BreastCancer) 
+# remove the unique identifier, which is useless and would confuse the machine learning algorithms
+BreastCancer$Id <- NULL 
+```
+
+```{r}
+##Support Vector Machine
+library(e1071)
+mysvm <- svm(BreastCancer$Class~., BreastCancer)
+mysvm.pred <- predict(mysvm, BreastCancer)
+table(mysvm.pred,BreastCancer$Class)
+#BreastCancer , hidden because too long
+```
+
+```{r}
+## NaiveBayes
+
+library(klaR)
+mynb <- NaiveBayes(BreastCancer$Class~., BreastCancer)
+mynb.pred <- predict(mynb,BreastCancer)
+table(mynb.pred$class, BreastCancer$Class)
+```
+```{r}
+#Neural Network
+library(nnet)
+mynnet <- nnet(BreastCancer$Class~., BreastCancer, size=1)
+mynnet.pred <- predict(mynnet,BreastCancer,type="class")
+table(mynnet.pred,BreastCancer$Class)
+```
+
+```{r}
+#Decision trees
+library(rpart)
+mytree <- rpart(BreastCancer$Class~., BreastCancer)
+plot(mytree); text(mytree) # in "iris_tree.ps"
+summary(mytree)
+mytree.pred <- predict(mytree,BreastCancer,type="class")
+table(mytree.pred,BreastCancer$Class)
+```
+
+
+```{r}
+#Regularised Discriminant Analysis
+library(klaR)
+myrda <- rda(BreastCancer$Class ~ ., BreastCancer)
+myrda.pred <- predict(myrda, BreastCancer)
+table(myrda.pred$class,BreastCancer$Class)
+```
+
+```{r}
+#Random Forest
+library(randomForest)
+myrf <- randomForest(BreastCancer$Class ~ .,BreastCancer)
+myrf.pred <- predict(myrf, BreastCancer)
+table(myrf.pred, BreastCancer$Class)
+
+```
+
+```{r}
+#For neural network, converting characters such as "benign" to "1", and "malignant" to "2".
+mynnet.pred1 <-match(mynnet.pred, unique(mynnet.pred))
+Neural <- mynnet.pred1
+
+#Comebine the classifications using the code rbind
+Combined.df <- t((rbind(mynnet.pred1, mysvm.pred, mytree.pred, myrda.pred$class, myrf.pred)))
+
+
+#By using mode, we would be able to classify the final output following the Majority Ruling
+Majoritymode <- apply(Combined.df, 1, function(idx) which.max(tabulate(idx)))
+```
+
+```{r}
+#Rename the variables 
+SVM <- mysvm.pred
+Discriminant <- myrda.pred$class
+Tree <- mytree.pred
+Forest <- myrf.pred
+Actual <- BreastCancer$Class
+
+#Create a new data frame that has the outputs from all classification models, the majority ruling output based on mode, and the actual data. 
+Ensemble.df <-t((rbind(SVM, Neural, Discriminant, Tree, Forest, Majoritymode, Actual)))
+Ensemble.df
+
+table(Ensemble.df[,6],BreastCancer$Class)
+```
+
